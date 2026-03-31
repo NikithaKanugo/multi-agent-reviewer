@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Research Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #fafafa;
+            color: #1a1a1a;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ========== TOP BAR ========== */
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 0 1.5rem;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .topbar .logo {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #111;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .topbar .logo-icon {
+            background: #111;
+            color: #fff;
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+        .agent-pills { display: flex; gap: 0.4rem; }
+        .agent-pill {
+            font-size: 0.68rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid #e0e0e0;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+        .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #d4d4d4; transition: background 0.3s; }
+        .agents-active .dot-r { background: #10b981; }
+        .agents-active .dot-w { background: #3b82f6; }
+        .agents-active .dot-v { background: #8b5cf6; }
+        .agents-active .agent-pill { color: #555; border-color: #ccc; }
+
+        /* ========== MAIN 3-COL LAYOUT ========== */
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 300px 1fr 380px;
+            overflow: hidden;
+        }
+
+        /* ========== LEFT PANEL — PAPERS ========== */
+        .panel-left {
+            background: #fff;
+            border-right: 1px solid #e5e5e5;
+            display: grid;
+            grid-template-rows: auto auto auto 1fr;  /* header | upload | fetch | paper-list */
+            min-height: 0;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 1rem 1.25rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header .count {
+            background: #f0f0f0;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 0.68rem;
+        }
+        .btn-clear {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            background: #fff;
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .btn-clear:hover { background: #fef2f2; border-color: #ef4444; }
+
+        /* Upload Zone */
+        .upload-zone {
+            margin: 0 0.75rem 0.75rem;
+            border: 2px dashed #d4d4d4;
+            border-radius: 10px;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+        }
+        .upload-zone:hover { border-color: #111; background: #f8f8f8; }
+        .upload-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-zone .uz-icon { font-size: 1.5rem; margin-bottom: 0.3rem; color: #bbb; }
+        .upload-zone p { font-size: 0.75rem; color: #999; }
+        .upload-zone .uz-link { color: #111; font-weight: 600; text-decoration: underline; cursor: pointer; }
+        .upload-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+        }
+
+        /* arXiv fetch */
+        .fetch-row {
+            margin: 0 0.75rem 0.75rem;
+            display: flex;
+            gap: 0.4rem;
+        }
+        .fetch-row input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 0.45rem 0.6rem;
+            font-size: 0.78rem;
+            outline: none;
+            font-family: inherit;
+        }
+        .fetch-row input:focus { border-color: #111; }
+        .fetch-row button {
+            background: #111;
+            color: #fff;
+            border: none;
+            padding: 0.45rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Paper list — scrollable via absolute positioning */
+        .paper-list-wrapper {
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .paper-list {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 0 0.5rem;
+        }
+        .paper-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 2px;
+        }
+        .paper-item:hover { background: #f5f5f5; }
+        .paper-item.active { background: #f0f0f0; }
+        .paper-icon {
+            width: 34px; height: 34px;
+            background: #f5f5f5;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: #999;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .paper-meta { flex: 1; min-width: 0; }
+        .paper-meta h4 {
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .paper-meta p {
+            font-size: 0.68rem;
+            color: #999;
+            margin-top: 1px;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .sd-ready { background: #d4d4d4; }
+        .sd-processing { background: #fbbf24; animation: pulse 1.5s infinite; }
+        .sd-done { background: #10b981; }
+        .sd-error { background: #ef4444; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .paper-actions {
+            display: flex; gap: 0.3rem;
+        }
+        .btn-sm {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .btn-process { background: #10b981; color: #fff; }
+        .btn-process:hover { background: #059669; }
+        .btn-processing { background: #fef3c7; color: #92400e; cursor: default; }
+
+        /* ========== CENTER — CHAT ========== */
+        /*
+         * APPROACH: Use position:relative on the middle area + position:absolute
+         * on the scrollable messages. This is bulletproof — the messages div
+         * gets an exact pixel height from its parent, so overflow scroll always works.
+         */
+        .panel-center {
+            display: grid;
+            grid-template-rows: auto 1fr auto auto;  /* header | messages | suggestions | input */
+            background: #fafafa;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .chat-header {
+            padding: 0.85rem 1.5rem;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fff;
+        }
+        .chat-header h2 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chat-header p { font-size: 0.72rem; color: #999; margin-top: 2px; }
+
+        /* Wrapper that takes all remaining space */
+        .chat-scroll-wrapper {
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* Empty state */
+        .chat-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #bbb;
+            gap: 0.75rem;
+            padding: 2rem;
+        }
+        .chat-empty .empty-icon { font-size: 3rem; opacity: 0.3; }
+        .chat-empty h3 { font-size: 1rem; font-weight: 600; color: #999; }
+        .chat-empty p { font-size: 0.82rem; text-align: center; max-width: 360px; line-height: 1.5; }
+
+        /* Messages — absolutely positioned so it gets a hard pixel height */
+        .chat-messages {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .msg {
+            max-width: 78%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        .msg.user {
+            background: #111;
+            color: #fff;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .msg.agent {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .msg .agent-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .label-researcher { color: #10b981; }
+        .label-writer { color: #3b82f6; }
+        .label-reviewer { color: #8b5cf6; }
+
+        .msg .msg-text { white-space: pre-wrap; }
+        .msg .msg-text p { margin-bottom: 0.4rem; }
+        .msg .msg-text ul, .msg .msg-text ol { padding-left: 1.25rem; margin-bottom: 0.4rem; }
+        .msg .msg-text strong { font-weight: 600; }
+
+        /* Typing indicator */
+        .msg.typing {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.1rem;
+        }
+        .typing-dots { display: flex; gap: 4px; }
+        .typing-dots span {
+            width: 6px; height: 6px;
+            background: #ccc;
+            border-radius: 50%;
+            animation: typingBounce 1.2s infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+
+        /* Chat input — pinned at bottom, never shrinks */
+        .chat-input {
+            padding: 0.85rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .chat-input input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 0.65rem 1rem;
+            font-size: 0.85rem;
+            outline: none;
+            font-family: inherit;
+        }
+        .chat-input input:focus { border-color: #111; }
+        .chat-input input:disabled { background: #f5f5f5; color: #999; }
+        .chat-input button {
+            background: #111;
+            color: #fff;
+            border: none;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .chat-input button:hover { background: #333; }
+        .chat-input button:disabled { background: #ccc; cursor: default; }
+
+        /* ========== RIGHT PANEL — RESPONSE ========== */
+        .panel-right {
+            background: #fff;
+            border-left: 1px solid #e5e5e5;
+            display: grid;
+            grid-template-rows: auto 1fr;  /* header+tabs | scrollable content */
+            min-height: 0;
+            overflow: hidden;
+        }
+        .response-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .response-header h3 { font-size: 0.9rem; font-weight: 600; }
+        .tab-row {
+            display: flex;
+            gap: 0;
+            margin-top: 0.75rem;
+        }
+        .tab {
+            padding: 0.4rem 0.9rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            background: #fafafa;
+            color: #888;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .tab:first-child { border-radius: 6px 0 0 6px; }
+        .tab:last-child { border-radius: 0 6px 6px 0; }
+        .tab.active { background: #111; color: #fff; border-color: #111; }
+
+        /* Wrapper that fills remaining space in right panel */
+        .resp-content-wrapper {
+            position: relative;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .response-body {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 1.25rem;
+            font-size: 0.84rem;
+            line-height: 1.7;
+            color: #555;
+        }
+        .response-body h1 {
+            font-size: 1.1rem; font-weight: 700; color: #111;
+            margin: 0 0 1rem;
+        }
+        .response-body h2 {
+            font-size: 0.92rem; font-weight: 600; color: #111;
+            margin: 1.25rem 0 0.5rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid #eee;
+        }
+        .response-body h3 {
+            font-size: 0.88rem; font-weight: 600; color: #333;
+            margin: 1rem 0 0.4rem;
+        }
+        .response-body p { margin-bottom: 0.6rem; }
+        .response-body ul, .response-body ol { padding-left: 1.25rem; margin-bottom: 0.6rem; }
+        .response-body li { margin-bottom: 0.3rem; }
+        .response-body strong { color: #222; }
+        .response-body code {
+            background: #f5f5f5; padding: 1px 5px; border-radius: 3px;
+            font-size: 0.82rem;
+        }
+
+        /* Right panel empty state */
+        .resp-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            gap: 0.5rem;
+            padding: 2rem;
+        }
+        .resp-empty .re-icon { font-size: 2.5rem; opacity: 0.3; }
+        .resp-empty p { font-size: 0.8rem; text-align: center; line-height: 1.5; color: #aaa; }
+
+        /* Pipeline progress card */
+        .progress-card {
+            margin: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+        }
+        .progress-card h4 {
+            font-size: 0.82rem; font-weight: 600; margin-bottom: 0.75rem; color: #111;
+        }
+        .progress-steps { display: flex; flex-direction: column; gap: 0.4rem; }
+        .p-step {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.75rem; color: #999;
+        }
+        .p-step.done { color: #10b981; }
+        .p-step.active { color: #111; font-weight: 600; }
+        .p-step .step-icon { width: 18px; text-align: center; }
+
+        /* Notification toast */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #111;
+            color: #fff;
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            z-index: 1000;
+            transition: transform 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Suggested questions */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            padding: 0.5rem 1.5rem 0;
+            flex-shrink: 0;
+        }
+        .suggestion-chip {
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 14px;
+            border: 1px solid #e0e0e0;
+            background: #fff;
+            cursor: pointer;
+            color: #666;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .suggestion-chip:hover { border-color: #111; color: #111; }
+
+        /* Markdown rendering */
+        .md-content h1 { font-size: 1.1rem; font-weight: 700; color: #111; margin-bottom: 0.75rem; }
+        .md-content h2 {
+            font-size: 0.92rem; font-weight: 600; color: #111;
+            margin: 1.25rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid #eee;
+        }
+        .md-content p { margin-bottom: 0.5rem; }
+        .md-content ul { padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .md-content li { margin-bottom: 0.25rem; }
+        .md-content strong { color: #222; font-weight: 600; }
+
+        /* Scrollbar — visible on all 3 columns */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f0f0f0; }
+        ::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #999; }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+    <div class="logo">
+        <div class="logo-icon">M</div>
+        Multi-Agent Reviewer
+    </div>
+    <div class="agent-pills">
+        <div class="agent-pill"><span class="pill-dot dot-r"></span> Researcher</div>
+        <div class="agent-pill"><span class="pill-dot dot-w"></span> Writer</div>
+        <div class="agent-pill"><span class="pill-dot dot-v"></span> Reviewer</div>
+    </div>
+</div>
+
+<!-- MAIN 3-COL -->
+<div class="main">
+
+    <!-- ==================== LEFT PANEL ==================== -->
+    <div class="panel-left">
+        <div class="panel-header">
+            <span>Papers <span class="count" id="paper-count">0</span></span>
+            <button class="btn-clear" id="clear-papers-btn" title="Clear all papers">Clear All</button>
+        </div>
+
+        <!-- Upload -->
+        <div class="upload-zone" id="upload-zone">
+            <div class="uz-icon">&#128196;</div>
+            <p>Drag & drop PDF here<br>or <span class="uz-link">browse files</span></p>
+            <input type="file" id="file-input" accept=".txt,.pdf">
+        </div>
+
+        <!-- arXiv fetch -->
+        <div class="fetch-row">
+            <input type="text" id="arxiv-query" placeholder="arXiv search...">
+            <button id="fetch-btn">Fetch</button>
+        </div>
+
+        <!-- Paper list (scrollable) -->
+        <div class="paper-list-wrapper">
+            <div class="paper-list" id="paper-list"></div>
+        </div>
+    </div>
+
+    <!-- ==================== CENTER — CHAT ==================== -->
+    <div class="panel-center">
+        <div class="chat-header" id="chat-header">
+            <h2 id="chat-title">Select a paper</h2>
+            <p id="chat-subtitle">Upload or select a paper to start</p>
+        </div>
+
+        <!-- Scroll wrapper: takes all remaining vertical space -->
+        <div class="chat-scroll-wrapper">
+            <!-- Empty state (shown when no paper selected) -->
+            <div class="chat-empty" id="chat-empty">
+                <div class="empty-icon">&#128209;</div>
+                <h3>No paper selected</h3>
+                <p>Upload a PDF or fetch from arXiv, then select a paper to start chatting with the agents.</p>
+            </div>
+
+            <!-- Messages (hidden until paper selected) -->
+            <div class="chat-messages" id="chat-messages" style="display:none;"></div>
+        </div>
+
+        <!-- Suggestions (hidden until paper selected) -->
+        <div class="suggestions" id="suggestions" style="display:none;">
+            <button class="suggestion-chip" data-q="What is the main contribution of this paper?">Main contribution?</button>
+            <button class="suggestion-chip" data-q="Summarize the methodology used.">Methodology</button>
+            <button class="suggestion-chip" data-q="What are the key results and findings?">Key findings</button>
+            <button class="suggestion-chip" data-q="Evaluate the strengths and weaknesses of this paper.">Evaluate</button>
+            <button class="suggestion-chip" data-q="What are the limitations mentioned?">Limitations</button>
+        </div>
+
+        <!-- Input -->
+        <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Ask a question about the paper..." disabled>
+            <button id="send-btn" disabled>Send</button>
+        </div>
+    </div>
+
+    <!-- ==================== RIGHT PANEL ==================== -->
+    <div class="panel-right">
+        <div class="response-header">
+            <h3 id="resp-title">Analysis</h3>
+            <div class="tab-row" id="tab-row">
+                <button class="tab active" data-tab="summary">Summary</button>
+                <button class="tab" data-tab="notes">Notes</button>
+                <button class="tab" data-tab="progress">Progress</button>
+            </div>
+        </div>
+
+        <!-- Tab content container (scrollable) -->
+        <div id="resp-content" class="resp-content-wrapper">
+            <!-- Summary tab -->
+            <div class="response-body" id="tab-summary" style="display:block;">
+                <div class="resp-empty">
+                    <div class="re-icon">&#128203;</div>
+                    <p>Process a paper to see the agent-generated summary, research notes, and pipeline progress here.</p>
+                </div>
+            </div>
+            <!-- Notes tab -->
+            <div class="response-body" id="tab-notes" style="display:none;">
+                <div class="resp-empty">
+                    <div class="re-icon">&#128221;</div>
+                    <p>Research notes will appear here after the Researcher agent extracts information from the paper.</p>
+                </div>
+            </div>
+            <!-- Progress tab -->
+            <div class="response-body" id="tab-progress" style="display:none;">
+                <div class="resp-empty" id="progress-empty">
+                    <div class="re-icon">&#9881;</div>
+                    <p>Click "Summarize" on a paper to see the multi-agent pipeline progress.</p>
+                </div>
+                <div id="progress-content" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let papers = [];
+let selectedPaperId = null;
+let pollingInterval = null;
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Reset state on page load/refresh
+    selectedPaperId = null;
+    document.querySelector('.agent-pills').classList.remove('agents-active');
+
+    loadPapers();
+    setupUpload();
+    setupFetch();
+    setupClearPapers();
+    setupChat();
+    setupTabs();
+    setupSuggestions();
+});
+
+// ============================================================
+// PAPERS
+// ============================================================
+async function loadPapers() {
+    try {
+        const res = await fetch('/api/papers');
+        papers = await res.json();
+        renderPapers();
+    } catch (e) {
+        console.error('Failed to load papers:', e);
+    }
+}
+
+function renderPapers() {
+    const list = document.getElementById('paper-list');
+    document.getElementById('paper-count').textContent = papers.length;
+
+    if (papers.length === 0) {
+        list.innerHTML = '<p style="padding:1rem;color:#bbb;font-size:0.8rem;font-style:italic;">No papers yet</p>';
+        return;
+    }
+
+    list.innerHTML = papers.map(p => {
+        const isActive = p.id === selectedPaperId;
+        const statusClass = p.status.startsWith('error') ? 'sd-error' :
+            p.status === 'processing' ? 'sd-processing' :
+            p.status === 'done' ? 'sd-done' : 'sd-ready';
+
+        let actions = '';
+        if (p.status === 'ready') {
+            actions = `<button class="btn-sm btn-process" onclick="event.stopPropagation(); processePaper('${p.id}')">Summarize</button>`;
+        } else if (p.status === 'processing') {
+            actions = `<span class="btn-sm btn-processing">Processing...</span>`;
+        } else if (p.status === 'done') {
+            actions = `<span style="font-size:0.65rem;color:#10b981;font-weight:600;">Done</span>`;
+        } else if (p.status.startsWith('error')) {
+            actions = `<span style="font-size:0.65rem;color:#ef4444;" title="${p.status}">Error</span>`;
+        }
+
+        return `
+            <div class="paper-item ${isActive ? 'active' : ''}" onclick="selectPaper('${p.id}')">
+                <div class="paper-icon">PDF</div>
+                <div class="paper-meta">
+                    <h4 title="${p.name}">${p.name}</h4>
+                    <p>${p.filename}</p>
+                </div>
+                <div class="status-dot ${statusClass}"></div>
+                <div class="paper-actions">${actions}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectPaper(id) {
+    selectedPaperId = id;
+    const paper = papers.find(p => p.id === id);
+
+    // Activate agent pills
+    document.querySelector('.agent-pills').classList.add('agents-active');
+
+    // Update chat header
+    document.getElementById('chat-title').textContent = paper ? paper.name : 'Select a paper';
+    document.getElementById('chat-subtitle').textContent = 'Researcher / Writer / Reviewer agents ready';
+
+    // Show chat, hide empty
+    document.getElementById('chat-empty').style.display = 'none';
+    document.getElementById('chat-messages').style.display = 'flex';
+    document.getElementById('suggestions').style.display = 'flex';
+    document.getElementById('chat-input').disabled = false;
+    document.getElementById('send-btn').disabled = false;
+
+    // Load chat history
+    loadChatHistory(id);
+
+    // Load summaries for right panel
+    loadSummaryPanel(id);
+
+    // Start polling if processing
+    if (paper && paper.status === 'processing') {
+        startPolling(id);
+    }
+
+    renderPapers();
+}
+
+// ============================================================
+// UPLOAD
+// ============================================================
+function setupUpload() {
+    const zone = document.getElementById('upload-zone');
+    const input = document.getElementById('file-input');
+
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', () => {
+        if (input.files.length) uploadFile(input.files[0]);
+        input.value = '';
+    });
+}
+
+async function uploadFile(file) {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.success) {
+            toast(`Uploaded: ${data.filename}`);
+            await loadPapers();
+        } else {
+            toast(data.error || 'Upload failed');
+        }
+    } catch (e) {
+        toast('Upload failed');
+    }
+}
+
+// ============================================================
+// ARXIV FETCH
+// ============================================================
+function setupFetch() {
+    const btn = document.getElementById('fetch-btn');
+    const input = document.getElementById('arxiv-query');
+
+    btn.addEventListener('click', doFetch);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFetch(); });
+}
+
+async function doFetch() {
+    const input = document.getElementById('arxiv-query');
+    const query = input.value.trim();
+    if (!query) return;
+
+    document.getElementById('fetch-btn').textContent = '...';
+    try {
+        const res = await fetch('/api/fetch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, max: 3 }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast(`Fetched ${data.count} paper(s)`);
+            input.value = '';
+            await loadPapers();
+        } else {
+            toast(data.error || 'Fetch failed');
+        }
+    } catch (e) {
+        toast('Fetch failed');
+    }
+    document.getElementById('fetch-btn').textContent = 'Fetch';
+}
+
+// ============================================================
+// CLEAR PAPERS
+// ============================================================
+function setupClearPapers() {
+    document.getElementById('clear-papers-btn').addEventListener('click', clearAllPapers);
+}
+
+async function clearAllPapers() {
+    if (!confirm('Remove all papers and their summaries?')) return;
+    try {
+        const res = await fetch('/api/papers/clear', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            toast(`Cleared ${data.removed} paper(s)`);
+            selectedPaperId = null;
+            document.querySelector('.agent-pills').classList.remove('agents-active');
+            document.getElementById('chat-title').textContent = 'Select a paper';
+            document.getElementById('chat-subtitle').textContent = 'Upload or select a paper to start';
+            document.getElementById('chat-empty').style.display = 'flex';
+            document.getElementById('chat-messages').style.display = 'none';
+            document.getElementById('suggestions').style.display = 'none';
+            document.getElementById('chat-input').disabled = true;
+            document.getElementById('send-btn').disabled = true;
+            document.getElementById('tab-summary').innerHTML = '<div class="resp-empty"><div class="re-icon">&#128203;</div><p>Process a paper to see the summary here.</p></div>';
+            document.getElementById('tab-notes').innerHTML = '<div class="resp-empty"><div class="re-icon">&#128221;</div><p>Research notes will appear here.</p></div>';
+            await loadPapers();
+        }
+    } catch (e) {
+        toast('Failed to clear');
+    }
+}
+
+// ============================================================
+// PROCESS PAPER
+// ============================================================
+async function processePaper(id) {
+    try {
+        const res = await fetch(`/api/process/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            toast('Processing started');
+            // Update local state
+            const p = papers.find(x => x.id === id);
+            if (p) p.status = 'processing';
+            renderPapers();
+            startPolling(id);
+            // Switch to progress tab
+            switchTab('progress');
+        } else {
+            toast(data.error || 'Failed to start');
+        }
+    } catch (e) {
+        toast('Failed to start processing');
+    }
+}
+
+function startPolling(paperId) {
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/api/status/${paperId}`);
+            const data = await res.json();
+
+            // Update progress panel
+            renderProgress(data.progress || {});
+
+            if (data.status === 'done' || data.status.startsWith('error')) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+
+                // Update paper status
+                const p = papers.find(x => x.id === paperId);
+                if (p) p.status = data.status;
+                renderPapers();
+
+                if (data.status === 'done') {
+                    toast('Processing complete!');
+                    loadSummaryPanel(paperId);
+                } else {
+                    toast('Processing error');
+                }
+            }
+        } catch (e) {
+            // ignore polling errors
+        }
+    }, 2000);
+}
+
+function renderProgress(progress) {
+    const container = document.getElementById('progress-content');
+    const empty = document.getElementById('progress-empty');
+    if (!progress.stage) return;
+
+    empty.style.display = 'none';
+    container.style.display = 'block';
+
+    const allSteps = [
+        { id: 'loading', label: 'Loading & chunking paper' },
+        { id: 'indexing', label: 'Building FAISS index' },
+        { id: 'researcher', label: 'Researcher agent extracting info' },
+        { id: 'writer', label: 'Writer agent drafting summary' },
+        { id: 'reviewer', label: 'Reviewer agent evaluating' },
+    ];
+    const done = progress.stages_done || [];
+
+    container.innerHTML = `
+        <div class="progress-card">
+            <h4>${progress.stage === 'complete' ? 'Pipeline Complete' :
+                  progress.stage === 'error' ? 'Pipeline Error' :
+                  'Processing...'}</h4>
+            <div class="progress-steps">
+                ${allSteps.map(s => {
+                    const isDone = done.includes(s.id);
+                    const isActive = progress.stage === s.id;
+                    return `<div class="p-step ${isDone ? 'done' : ''} ${isActive ? 'active' : ''}">
+                        <span class="step-icon">${isDone ? '&#10003;' : isActive ? '&#9654;' : '&#9675;'}</span>
+                        ${s.label}
+                    </div>`;
+                }).join('')}
+            </div>
+            ${progress.detail ? `<p style="margin-top:0.75rem;font-size:0.75rem;color:#888;">${progress.detail}</p>` : ''}
+            ${progress.revision_count > 0 ? `<p style="margin-top:0.5rem;font-size:0.75rem;color:#8b5cf6;">Revisions: ${progress.revision_count}</p>` : ''}
+        </div>
+    `;
+}
+
+// ============================================================
+// SUMMARY & NOTES PANEL
+// ============================================================
+async function loadSummaryPanel(paperId) {
+    const summaryTab = document.getElementById('tab-summary');
+    const notesTab = document.getElementById('tab-notes');
+
+    // Reset to empty state
+    summaryTab.innerHTML = `<div class="resp-empty"><div class="re-icon">&#128203;</div><p>No summary yet for this paper. Click "Summarize" to generate one.</p></div>`;
+    notesTab.innerHTML = `<div class="resp-empty"><div class="re-icon">&#128221;</div><p>No research notes yet. Run the pipeline first.</p></div>`;
+
+    try {
+        // Fetch analysis for THIS specific paper
+        const res = await fetch(`/api/paper/${paperId}/analysis`);
+        const data = await res.json();
+
+        if (data.found) {
+            if (data.summary) {
+                summaryTab.innerHTML = `<div class="md-content">${markdownToHtml(data.summary)}</div>`;
+            }
+            if (data.notes) {
+                notesTab.innerHTML = `<div class="md-content">${markdownToHtml(data.notes)}</div>`;
+            }
+        }
+    } catch (e) {
+        // keep empty state
+    }
+}
+
+function markdownToHtml(md) {
+    if (!md) return '';
+    // Simple markdown to HTML
+    let html = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // List items
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    // Wrap consecutive <li> in <ul>
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+    // Paragraphs — wrap non-tag lines
+    html = html.split('\n\n').map(block => {
+        block = block.trim();
+        if (!block) return '';
+        if (block.startsWith('<h') || block.startsWith('<ul') || block.startsWith('<li')) return block;
+        if (!block.startsWith('<')) return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+        return block;
+    }).join('\n');
+
+    return html;
+}
+
+// ============================================================
+// CHAT
+// ============================================================
+function setupChat() {
+    const input = document.getElementById('chat-input');
+    const btn = document.getElementById('send-btn');
+
+    btn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+}
+
+function setupSuggestions() {
+    document.querySelectorAll('.suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.getElementById('chat-input').value = chip.dataset.q;
+            sendMessage();
+        });
+    });
+}
+
+async function loadChatHistory(paperId) {
+    const container = document.getElementById('chat-messages');
+    try {
+        const res = await fetch(`/api/chat/${paperId}/history`);
+        const history = await res.json();
+        container.innerHTML = '';
+        history.forEach(msg => {
+            if (msg.role === 'user') {
+                appendUserMessage(msg.content);
+            } else {
+                appendAgentMessage(msg.agent, msg.agent_label, msg.content);
+            }
+        });
+        if (history.length === 0) {
+            // Show a welcome message
+            container.innerHTML = `
+                <div style="text-align:center;color:#bbb;padding:2rem;font-size:0.82rem;line-height:1.6;">
+                    <p style="font-size:1.5rem;margin-bottom:0.5rem;">&#128172;</p>
+                    Ask questions about this paper.<br>
+                    Agents will respond based on the paper content.
+                </div>
+            `;
+        }
+    } catch (e) {
+        container.innerHTML = '';
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const question = input.value.trim();
+    if (!question || !selectedPaperId) return;
+
+    input.value = '';
+
+    // Clear welcome message if present
+    const container = document.getElementById('chat-messages');
+    if (container.querySelector('[style*="text-align:center"]')) {
+        container.innerHTML = '';
+    }
+
+    // Hide suggestions after first message
+    document.getElementById('suggestions').style.display = 'none';
+
+    // Show user message
+    appendUserMessage(question);
+
+    // Show typing indicator
+    const typing = document.createElement('div');
+    typing.className = 'msg typing';
+    typing.innerHTML = `
+        <div class="agent-label" style="color:#888;">Thinking...</div>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+    `;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+
+    // Disable input
+    input.disabled = true;
+    document.getElementById('send-btn').disabled = true;
+
+    try {
+        const res = await fetch(`/api/chat/${selectedPaperId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question }),
+        });
+        const data = await res.json();
+
+        // Remove typing indicator
+        typing.remove();
+
+        if (data.error) {
+            appendSystemMessage(data.error);
+        } else {
+            appendAgentMessage(data.agent, data.agent_label, data.content);
+        }
+    } catch (e) {
+        typing.remove();
+        appendSystemMessage('Failed to get response. Check your connection.');
+    }
+
+    // Re-enable input
+    input.disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    input.focus();
+}
+
+function appendUserMessage(text) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'msg user';
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendAgentMessage(agent, label, content) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'msg agent';
+
+    const labelClass = agent === 'researcher' ? 'label-researcher' :
+                       agent === 'writer' ? 'label-writer' : 'label-reviewer';
+
+    div.innerHTML = `
+        <div class="agent-label ${labelClass}">${label}</div>
+        <div class="msg-text">${markdownToHtml(content)}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendSystemMessage(text) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'msg agent';
+    div.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">${text}</div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function setupTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+}
+
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    ['summary', 'notes', 'progress'].forEach(id => {
+        document.getElementById(`tab-${id}`).style.display = id === name ? 'block' : 'none';
+    });
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+
+</body>
+</html>

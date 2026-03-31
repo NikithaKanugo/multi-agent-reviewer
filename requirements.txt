@@ -1,0 +1,34 @@
+# LangGraph - workflow orchestration (the "manager" that routes between agents)
+langgraph>=0.2.0
+
+# LangChain core - base abstractions for LLM apps (prompts, chains, tools)
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+
+# Groq - free, fast cloud LLM API (runs Llama models)
+groq>=1.0.0
+
+# Sentence-Transformers - local embeddings (no API key needed)
+sentence-transformers>=3.0.0
+
+# FAISS - vector similarity search (shared memory for agents)
+faiss-cpu>=1.7.0
+
+# CrewAI - agent role definitions (role, goal, backstory pattern)
+crewai>=0.80.0
+
+# Tiktoken - token counting (to chunk text properly)
+tiktoken>=0.7.0
+
+# Python-dotenv - load API keys from .env file (keep secrets out of code)
+python-dotenv>=1.0.0
+
+# Flask - web UI for the research assistant
+flask>=3.0.0
+
+# arXiv - fetch research papers from arXiv
+arxiv>=2.0.0
+
+# PyMuPDF - extract text from PDF files
+pymupdf>=1.20.0

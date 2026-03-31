@@ -1,0 +1,47 @@
+# Environment secrets — NEVER commit
+.env
+*.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Output (generated summaries — regenerable)
+output/
+
+# Downloaded papers (large files, user-specific)
+papers/*.txt
+papers/*.pdf
+!papers/sample_paper.txt
+
+# Interview questions (private)
+interview_questions.md
+
+# Design mockup templates (not part of the app)
+templates/design*.html
+templates/architecture.html
+templates/proof_of_reasoning.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# Misc
+multia
+multia.save
